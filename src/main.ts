@@ -281,7 +281,9 @@ window.onload = function () {
   }
   titleOptionDom.onclick = function (evt) {
     const li = evt.target as HTMLLIElement
+    console.log('🚀 ~ li:', li)
     const level = <TitleLevel>li.dataset.level
+    console.log('🚀 ~ level:', level)
     instance.command.executeTitle(level || null)
   }
 
