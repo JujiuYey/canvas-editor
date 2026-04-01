@@ -26,6 +26,7 @@ private textData: string[] = ['你', '好', '世', '界']
 ```
 
 **问题**：每个元素只是一个字符，无法描述：
+
 - 加粗、斜体、颜色等样式
 - 字体大小
 - 图片、超链接等特殊元素
@@ -39,12 +40,12 @@ private textData: string[] = ['你', '好', '世', '界']
 ```typescript
 // 元素接口
 interface IElement {
-  value: string          // 元素的文本值
-  bold?: boolean         // 是否加粗
-  italic?: boolean       // 是否斜体
-  color?: string         // 文字颜色
-  fontSize?: number      // 字体大小
-  fontFamily?: string    // 字体
+  value: string // 元素的文本值
+  bold?: boolean // 是否加粗
+  italic?: boolean // 是否斜体
+  color?: string // 文字颜色
+  fontSize?: number // 字体大小
+  fontFamily?: string // 字体
 }
 
 // 示例
@@ -57,10 +58,10 @@ const element: IElement = {
 
 ### 对比
 
-| 存储方式 | 示例 | 能否表示样式 |
-|----------|------|--------------|
-| `string[]` | `['你', '好']` | ❌ 不能 |
-| `IElement[]` | `[{value:'你',bold:true}, {value:'好'}]` | ✅ 可以 |
+| 存储方式     | 示例                                     | 能否表示样式 |
+| ------------ | ---------------------------------------- | ------------ |
+| `string[]`   | `['你', '好']`                           | ❌ 不能      |
+| `IElement[]` | `[{value:'你',bold:true}, {value:'好'}]` | ✅ 可以      |
 
 ---
 
@@ -73,18 +74,17 @@ const element: IElement = {
 ```
 ['H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd']
 ```
+
 问题：你不知道 W 到 d 之间是加粗的
 
 ### 用 Element 数组（✅ 好）
 
 ```typescript
-[
-  { value: 'Hello ' },
-  { value: 'World', bold: true },
-  { value: '!' }
-]
+;[{ value: 'Hello ' }, { value: 'World', bold: true }, { value: '!' }]
 ```
+
 优势：
+
 - 样式信息内聚在元素中
 - 便于遍历、筛选、修改
 - 可以表示任意复杂的内容结构
@@ -120,11 +120,11 @@ interface IElement {
 
 // 行数据（包含元素列表和坐标信息）
 interface IRow {
-  elements: IElement[]      // 这一行的所有元素
-  x: number                 // 行起始 x 坐标
-  y: number                 // 行起始 y 坐标
-  width: number             // 行宽
-  height: number             // 行高
+  elements: IElement[] // 这一行的所有元素
+  x: number // 行起始 x 坐标
+  y: number // 行起始 y 坐标
+  width: number // 行宽
+  height: number // 行高
 }
 ```
 
@@ -136,46 +136,116 @@ class ElementEditor {
   private canvas: HTMLCanvasElement
   private ctx: CanvasRenderingContext2D
   private options: IEditorOptions
-  
+
   // 核心变化：使用 Element 数组
   private elementList: IElement[] = []
   private cursorIndex: number = 0
-  
+
   // 排版结果：行数组
   private rowList: IRow[] = []
-  
+
   // 默认样式（用于新插入的元素）
-  private defaultStyle: Pick<IElement, 'fontSize' | 'fontFamily' | 'color' | 'bold' | 'italic'> = {
+  private defaultStyle: Pick<
+    IElement,
+    'fontSize' | 'fontFamily' | 'color' | 'bold' | 'italic'
+  > = {
     fontSize: 16,
     fontFamily: 'sans-serif',
     color: '#000000',
     bold: false,
     italic: false
   }
-  
+
   constructor(container: HTMLElement, options?: Partial<IEditorOptions>) {
-    // ... 初始化代码 ...
+    // 1. 保存容器引用
+    this.container = container
+
+    // 2. 合并默认选项
+    this.options = {
+      width: options?.width ?? 600,
+      height: options?.height ?? 400,
+      defaultFontSize: options?.defaultFontSize ?? 16,
+      defaultFontFamily: options?.defaultFontFamily ?? 'sans-serif',
+      defaultColor: options?.defaultColor ?? '#000000',
+      backgroundColor: options?.backgroundColor ?? '#FFFFFF',
+      padding: options?.padding ?? 10,
+      lineHeight: options?.lineHeight ?? 1.5
+    }
+
+    // 3. 创建 Canvas 元素
+    this.canvas = document.createElement('canvas')
+    this.canvas.width = this.options.width
+    this.canvas.height = this.options.height
+    this.canvas.style.display = 'block'
+    this.canvas.style.border = '1px solid #ccc'
+    this.canvas.style.cursor = 'text'
+    container.appendChild(this.canvas)
+
+    // 4. 获取 2D 渲染上下文
+    this.ctx = this.canvas.getContext('2d')!
+
+    // 5. 初始化数据结构
+    this.elementList = []
+    this.rowList = []
+    this.cursorIndex = 0
+
+    // 6. 绑定事件处理
+    this.handleKeydown = this.handleKeydown.bind(this)
+    this.canvas.addEventListener('keydown', this.handleKeydown)
+
+    // 7. 让 Canvas 可以接收键盘输入
+    this.canvas.tabIndex = 1
+    this.canvas.focus()
+
+    // 8. 初始渲染
+    this.computeRows()
+    this.render()
   }
-  
+
   // ========== 核心方法 ==========
-  
+
+  // 处理键盘事件
+  private handleKeydown(event: KeyboardEvent) {
+    const key = event.key
+
+    // 处理退格
+    if (key === 'Backspace') {
+      event.preventDefault()
+      this.handleBackspace()
+      return
+    }
+
+    // 处理换行
+    if (key === 'Enter') {
+      event.preventDefault()
+      this.handleInput('\n')
+      return
+    }
+
+    // 处理普通字符输入
+    if (key.length === 1 && !event.ctrlKey && !event.metaKey) {
+      event.preventDefault()
+      this.handleInput(key)
+    }
+  }
+
   // 处理文字输入
   private handleInput(char: string) {
     // 创建一个新的 Element
     const newElement: IElement = {
       value: char,
-      ...this.defaultStyle  // 继承默认样式
+      ...this.defaultStyle // 继承默认样式
     }
-    
+
     // 插入到光标位置
     this.elementList.splice(this.cursorIndex, 0, newElement)
     this.cursorIndex++
-    
+
     // 重新排版和渲染
     this.computeRows()
     this.render()
   }
-  
+
   // 处理退格
   private handleBackspace() {
     if (this.cursorIndex > 0) {
@@ -185,13 +255,13 @@ class ElementEditor {
       this.render()
     }
   }
-  
+
   // ========== 排版：计算行数据 ==========
   private computeRows() {
     const { padding, lineHeight, defaultFontSize, width } = this.options
     const maxWidth = width - padding * 2
     const lineHeightPx = defaultFontSize * lineHeight
-    
+
     this.rowList = []
     let currentRow: IRow = {
       elements: [],
@@ -201,16 +271,16 @@ class ElementEditor {
       height: lineHeightPx
     }
     let currentX = padding
-    
+
     for (const element of this.elementList) {
       // 获取元素的字体信息
       const fontSize = element.fontSize || this.defaultStyle.fontSize!
       const fontFamily = element.fontFamily || this.defaultStyle.fontFamily!
-      
+
       // 测量元素宽度
       this.ctx.font = `${fontSize}px ${fontFamily}`
       const elementWidth = this.ctx.measureText(element.value).width
-      
+
       // 换行符或超出边界
       if (
         element.value === '\n' ||
@@ -226,24 +296,24 @@ class ElementEditor {
           height: lineHeightPx
         }
         currentX = padding
-        
+
         // 如果是换行符，不添加元素
         if (element.value === '\n') {
           continue
         }
       }
-      
+
       // 添加到当前行
       currentRow.elements.push(element)
       currentRow.width = currentX + elementWidth - padding
       currentX += elementWidth
     }
-    
+
     // 最后一行
     if (currentRow.elements.length > 0) {
       this.rowList.push(currentRow)
     }
-    
+
     // 空文档
     if (this.rowList.length === 0) {
       this.rowList.push({
@@ -255,61 +325,61 @@ class ElementEditor {
       })
     }
   }
-  
+
   // ========== 渲染 ==========
   private render() {
     // 清空画布
     this.ctx.fillStyle = this.options.backgroundColor
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
-    
+
     const { padding, defaultFontSize } = this.options
-    
+
     // 逐行绘制
     for (const row of this.rowList) {
       let x = row.x
-      
+
       for (const element of row.elements) {
         // 获取样式
         const fontSize = element.fontSize || defaultFontSize
         const fontFamily = element.fontFamily || this.defaultStyle.fontFamily!
         const color = element.color || this.defaultStyle.color!
         const fontStyle = `${element.italic ? 'italic ' : ''}${element.bold ? 'bold ' : ''}${fontSize}px ${fontFamily}`
-        
+
         // 设置样式
         this.ctx.font = fontStyle
         this.ctx.fillStyle = color
         this.ctx.textBaseline = 'top'
-        
+
         // 绘制
         this.ctx.fillText(element.value, x, row.y)
-        
+
         // 更新 x 坐标
         x += this.ctx.measureText(element.value).width
       }
     }
-    
+
     // 绘制光标
     this.drawCursor()
   }
-  
+
   // 绘制光标
   private drawCursor() {
     const { padding, defaultFontSize } = this.options
     const lineHeightPx = defaultFontSize * this.options.lineHeight
-    
+
     // 找到光标所在的行和列
     let elementCount = 0
     let cursorX = padding
     let cursorY = padding
-    
+
     for (const row of this.rowList) {
       const rowElementCount = row.elements.length
-      
+
       if (elementCount + rowElementCount >= this.cursorIndex) {
         // 光标在这一行
         const colInRow = this.cursorIndex - elementCount
         cursorY = row.y
-        
+
         // 计算该行光标前的宽度
         cursorX = padding
         for (let i = 0; i < colInRow; i++) {
@@ -321,10 +391,10 @@ class ElementEditor {
         }
         break
       }
-      
+
       elementCount += rowElementCount
     }
-    
+
     // 绘制光标
     this.ctx.fillStyle = '#000'
     this.ctx.fillRect(cursorX, cursorY, 2, defaultFontSize)
@@ -337,6 +407,7 @@ class ElementEditor {
 ## 2.5 效果对比
 
 现在编辑器可以：
+
 - ✅ 输入文字
 - ✅ 自动换行
 - ✅ **支持不同的样式**（需要添加样式切换功能）
@@ -403,35 +474,35 @@ private toggleBold() {
 ```typescript
 interface IElement {
   // 基础属性
-  id?: string                    // 唯一标识
-  value: string                  // 文本值
-  
+  id?: string // 唯一标识
+  value: string // 文本值
+
   // 样式属性
   bold?: boolean
   italic?: boolean
   underline?: boolean
   strikethrough?: boolean
   color?: string
-  highlight?: string            // 背景高亮
+  highlight?: string // 背景高亮
   fontSize?: number
   fontFamily?: string
   letterSpacing?: number
-  
+
   // 段落属性
-  rowFlex?: 'left' | 'center' | 'right' | 'justify'  // 行对齐
-  rowMargin?: number             // 段落间距
-  
+  rowFlex?: 'left' | 'center' | 'right' | 'justify' // 行对齐
+  rowMargin?: number // 段落间距
+
   // 特殊元素类型
   type?: 'image' | 'table' | 'hyperlink' | 'latex' | 'checkbox'
-  
+
   // 图片属性
   imageUrl?: string
   imageWidth?: number
   imageHeight?: number
-  
+
   // 分组（用于批注等）
   groupIds?: string[]
-  
+
   // 隐藏规则
   hide?: boolean
 }
@@ -473,11 +544,11 @@ interface IRow {
 
 ### 待解决问题
 
-| 问题 | 后续章节 |
-|------|----------|
-| 如何切换文字样式（加粗等） | 第5章 |
-| 如何支持图片等特殊元素 | 第8章 |
-| 如何处理表格 | 第9章 |
+| 问题                       | 后续章节 |
+| -------------------------- | -------- |
+| 如何切换文字样式（加粗等） | 第5章    |
+| 如何支持图片等特殊元素     | 第8章    |
+| 如何处理表格               | 第9章    |
 
 ---
 
@@ -496,6 +567,7 @@ interface IRow {
 [第3章：排版系统](./PROGRESSIVE-03-typesetting.md)
 
 我们将深入学习排版系统，包括：
+
 - 英文单词不断词
 - 中英文混排
 - 标点符号处理
