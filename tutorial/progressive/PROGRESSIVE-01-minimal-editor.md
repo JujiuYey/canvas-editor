@@ -32,25 +32,25 @@ minimal-editor/
 ```html
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <title>最小编辑器</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 20px;
-      font-family: sans-serif;
-    }
-    #editor {
-      border: 1px solid #ccc;
-      cursor: text;
-    }
-  </style>
-</head>
-<body>
-  <div id="editor"></div>
-  <script type="module" src="./main.ts"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <title>最小编辑器</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 20px;
+        font-family: sans-serif;
+      }
+      #editor {
+        border: 1px solid #ccc;
+        cursor: text;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="editor"></div>
+    <script type="module" src="./main.ts"></script>
+  </body>
 </html>
 ```
 
@@ -65,11 +65,11 @@ minimal-editor/
 ```typescript
 // 编辑器配置接口
 interface IEditorOptions {
-  width: number      // Canvas 宽度
-  height: number     // Canvas 高度
-  fontSize: number   // 字体大小
+  width: number // Canvas 宽度
+  height: number // Canvas 高度
+  fontSize: number // 字体大小
   fontFamily: string // 字体
-  color: string      // 文字颜色
+  color: string // 文字颜色
   backgroundColor: string // 背景色
 }
 
@@ -79,13 +79,13 @@ class MinimalEditor {
   private canvas: HTMLCanvasElement
   private ctx: CanvasRenderingContext2D
   private options: IEditorOptions
-  
+
   // 光标位置（用字符索引表示）
   private cursorIndex: number = 0
-  
+
   // 文本数据（每个字符一个元素）
   private textData: string[] = []
-  
+
   constructor(container: HTMLElement, options?: Partial<IEditorOptions>) {
     this.container = container
     // 默认配置
@@ -98,38 +98,38 @@ class MinimalEditor {
       backgroundColor: '#ffffff',
       ...options
     }
-    
+
     // 初始化
     this.initCanvas()
     this.bindEvents()
     this.render()
   }
-  
+
   private initCanvas() {
     // 创建 Canvas 元素
     this.canvas = document.createElement('canvas')
     this.canvas.width = this.options.width
     this.canvas.height = this.options.height
     this.canvas.style.display = 'block'
-    
+
     // 设置样式
     this.canvas.style.backgroundColor = this.options.backgroundColor
-    
+
     // 添加到容器
     this.container.appendChild(this.canvas)
-    
+
     // 获取绘图上下文
     this.ctx = this.canvas.getContext('2d')!
   }
-  
+
   private bindEvents() {
     // 点击时聚焦
     this.canvas.addEventListener('click', () => {
       this.canvas.focus()
     })
-    
+
     // 键盘输入
-    this.canvas.addEventListener('keydown', (e) => {
+    this.canvas.addEventListener('keydown', e => {
       if (e.key === 'Backspace') {
         this.handleBackspace()
       } else if (e.key === 'Enter') {
@@ -138,13 +138,13 @@ class MinimalEditor {
         this.handleInput(e.key)
       }
     })
-    
+
     // 使 Canvas 可以接收键盘事件
     this.canvas.tabIndex = 1
   }
-  
+
   // ========== 核心方法 ==========
-  
+
   // 处理文字输入
   private handleInput(char: string) {
     // 在光标位置插入字符
@@ -152,7 +152,7 @@ class MinimalEditor {
     this.cursorIndex++
     this.render()
   }
-  
+
   // 处理退格
   private handleBackspace() {
     if (this.cursorIndex > 0) {
@@ -161,40 +161,40 @@ class MinimalEditor {
       this.render()
     }
   }
-  
+
   // 处理回车（这里我们简单地换行，不做实际换行处理）
   private handleEnter() {
     this.handleInput('\n')
   }
-  
+
   // 渲染画布
   private render() {
     // 清空画布
     this.ctx.fillStyle = this.options.backgroundColor
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
-    
+
     // 设置字体
     this.ctx.font = `${this.options.fontSize}px ${this.options.fontFamily}`
     this.ctx.fillStyle = this.options.color
     this.ctx.textBaseline = 'top'
-    
+
     // 绘制文字（这里先简单地把所有文字连起来）
     const text = this.textData.join('')
     this.ctx.fillText(text, 10, 10)
-    
+
     // 绘制光标
     this.drawCursor()
   }
-  
+
   // 绘制光标
   private drawCursor() {
     // 测量光标之前的文字宽度
     const textBeforeCursor = this.textData.slice(0, this.cursorIndex).join('')
     const cursorX = 10 + this.ctx.measureText(textBeforeCursor).width
-    
+
     // 光标高度等于字体大小
     const cursorHeight = this.options.fontSize
-    
+
     // 绘制光标（一条竖线）
     this.ctx.fillStyle = '#000'
     this.ctx.fillRect(cursorX, 10, 2, cursorHeight)
@@ -227,6 +227,7 @@ npx serve .
 ```
 
 打开浏览器访问，你应该能看到：
+
 - 一个白色背景的 Canvas
 - 点击后可以输入文字
 - Backspace 可以删除
@@ -247,6 +248,7 @@ npx serve .
 ## 1.5 添加自动换行
 
 换行的核心思路：
+
 1. 把文本分割成多行
 2. 逐行绘制
 3. 每行累积宽度，超过最大宽度时换行
@@ -274,12 +276,12 @@ Step 1: char='h', currentWidth=0
         currentLine.length > 0? ❌ (空行)
         charWidth(10) > 180? ❌
         currentLine.push('h'), currentWidth = 10
-        
+
 Step 2: char='e', currentWidth=10
         currentLine.length > 0 && 10 + 10 > 180? ❌
         charWidth(10) > 180? ❌
         currentLine.push('e'), currentWidth = 20
-        
+
 ... 以此类推 ...
 
 最终: lineData = [['h','e','l','l','o']]
@@ -292,12 +294,12 @@ Step 2: char='e', currentWidth=10
 
 Step 1-18: 继续添加字符
            当 currentWidth=170, currentLine=['a'...'r'] (18个字符)
-           
+
 Step 19: char='s', currentWidth=170
          currentLine.length > 0 && 170 + 10 > 180? ❌ (170+10=180, 不大于)
          charWidth > 180? ❌
          currentLine.push('s'), currentWidth = 180
-         
+
 Step 20: char='t', currentWidth=180
          currentLine.length > 0 && 180 + 10 > 180? ✅
          → 创建新行！
@@ -348,6 +350,7 @@ Step 1: char='W', currentWidth=0
 ### drawCursor 算法图解
 
 **光标位置计算思路**：
+
 1. 遍历每一行，统计字符数量
 2. 当 `cursorIndex` 落在当前行的范围内时，找到具体位置
 3. 计算光标的 X 坐标（当前行内偏移）和 Y 坐标（行号 × 行高）
@@ -385,8 +388,8 @@ interface IEditorOptions {
   fontFamily: string
   color: string
   backgroundColor: string
-  padding: number  // 新增：内边距
-  lineHeight: number  // 新增：行高倍率
+  padding: number // 新增：内边距
+  lineHeight: number // 新增：行高倍率
 }
 
 class MinimalEditor {
@@ -394,13 +397,13 @@ class MinimalEditor {
   private canvas: HTMLCanvasElement
   private ctx: CanvasRenderingContext2D
   private options: IEditorOptions
-  
+
   private cursorIndex: number = 0
   private textData: string[] = []
-  
+
   // 新增：缓存的行数据
   private lineData: string[][] = []
-  
+
   constructor(container: HTMLElement, options?: Partial<IEditorOptions>) {
     this.container = container
     this.options = {
@@ -414,20 +417,20 @@ class MinimalEditor {
       lineHeight: 1.5,
       ...options
     }
-    
+
     this.initCanvas()
     this.bindEvents()
     this.render()
   }
-  
+
   // ... initCanvas, bindEvents 方法保持不变 ...
-  
+
   private bindEvents() {
     this.canvas.addEventListener('click', () => {
       this.canvas.focus()
     })
-    
-    this.canvas.addEventListener('keydown', (e) => {
+
+    this.canvas.addEventListener('keydown', e => {
       if (e.key === 'Backspace') {
         this.handleBackspace()
       } else if (e.key === 'Enter') {
@@ -436,18 +439,18 @@ class MinimalEditor {
         this.handleInput(e.key)
       }
     })
-    
+
     this.canvas.tabIndex = 1
   }
-  
+
   // 处理输入
   private handleInput(char: string) {
     this.textData.splice(this.cursorIndex, 0, char)
     this.cursorIndex++
-    this.computeLines()  // 新增：重新计算行
+    this.computeLines() // 新增：重新计算行
     this.render()
   }
-  
+
   // 处理退格
   private handleBackspace() {
     if (this.cursorIndex > 0) {
@@ -457,21 +460,21 @@ class MinimalEditor {
       this.render()
     }
   }
-  
+
   // 处理回车
   private handleEnter() {
     this.handleInput('\n')
   }
-  
+
   // ========== 核心：计算行数据 ==========
   private computeLines() {
     const { padding, width } = this.options
     const maxWidth = width - padding * 2
-    
+
     this.lineData = []
     let currentLine: string[] = []
     let currentWidth = 0
-    
+
     for (const char of this.textData) {
       // 遇到换行符，直接创建新行
       if (char === '\n') {
@@ -480,16 +483,16 @@ class MinimalEditor {
         currentWidth = 0
         continue
       }
-      
+
       const charWidth = this.ctx.measureText(char).width
-      
+
       // 如果当前行已满，需要换行
       if (currentLine.length > 0 && currentWidth + charWidth > maxWidth) {
         this.lineData.push(currentLine)
         currentLine = []
         currentWidth = 0
       }
-      
+
       // 如果这个字符本身就超过最大宽度，直接放入下一行
       // 否则正常添加
       if (charWidth > maxWidth) {
@@ -500,32 +503,32 @@ class MinimalEditor {
         currentWidth += charWidth
       }
     }
-    
+
     // 处理最后一行
     if (currentLine.length > 0) {
       this.lineData.push(currentLine)
     }
-    
+
     // 处理空文档
     if (this.lineData.length === 0) {
       this.lineData.push([])
     }
   }
-  
+
   // ========== 渲染 ==========
   private render() {
     // 清空画布（使用背景色填充）
     this.ctx.fillStyle = this.options.backgroundColor
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
-    
+
     // 设置字体
     this.ctx.font = `${this.options.fontSize}px ${this.options.fontFamily}`
     this.ctx.fillStyle = this.options.color
     this.ctx.textBaseline = 'top'
-    
+
     const { padding, fontSize, lineHeight } = this.options
     const lineHeightPx = fontSize * lineHeight
-    
+
     // 逐行绘制
     for (let lineIndex = 0; lineIndex < this.lineData.length; lineIndex++) {
       const line = this.lineData[lineIndex]
@@ -533,24 +536,24 @@ class MinimalEditor {
       const text = line.join('')
       this.ctx.fillText(text, padding, y)
     }
-    
+
     // 绘制光标
     this.drawCursor()
   }
-  
+
   // ========== 绘制光标（改进版）==========
   private drawCursor() {
     const { padding, fontSize, lineHeight } = this.options
     const lineHeightPx = fontSize * lineHeight
-    
+
     let charCount = 0
     let cursorX = padding
     let cursorY = padding
-    
+
     for (let i = 0; i < this.lineData.length; i++) {
       const line = this.lineData[i]
       const lineCharCount = line.length
-      
+
       if (charCount + lineCharCount >= this.cursorIndex) {
         const colInLine = this.cursorIndex - charCount
         const textBeforeCursor = line.slice(0, colInLine).join('')
@@ -558,10 +561,10 @@ class MinimalEditor {
         cursorY = padding + i * lineHeightPx
         break
       }
-      
-      charCount += lineCharCount + 1
+
+      charCount += lineCharCount
     }
-    
+
     this.ctx.fillStyle = '#000'
     this.ctx.fillRect(cursorX, cursorY, 2, fontSize)
   }
@@ -573,6 +576,7 @@ class MinimalEditor {
 ## 1.6 现在的效果
 
 现在你应该有了一个：
+
 - ✅ 可以输入文字
 - ✅ 自动换行
 - ✅ Backspace 删除
@@ -617,12 +621,12 @@ private render() {
 
 ### 待解决的问题
 
-| 问题 | 原因 | 后续章节 |
-|------|------|----------|
-| 光标无法通过鼠标点击定位 | 还没实现鼠标位置计算 | 第4章 |
-| 没有选中文本功能 | 还没实现选区管理 | 第4章 |
-| 文字样式单一 | 没有样式系统 | 第5章 |
-| 不能撤销重做 | 没有历史记录 | 第6章 |
+| 问题                     | 原因                 | 后续章节 |
+| ------------------------ | -------------------- | -------- |
+| 光标无法通过鼠标点击定位 | 还没实现鼠标位置计算 | 第4章    |
+| 没有选中文本功能         | 还没实现选区管理     | 第4章    |
+| 文字样式单一             | 没有样式系统         | 第5章    |
+| 不能撤销重做             | 没有历史记录         | 第6章    |
 
 ---
 
