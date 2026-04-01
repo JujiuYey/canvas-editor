@@ -251,6 +251,130 @@ npx serve .
 2. 逐行绘制
 3. 每行累积宽度，超过最大宽度时换行
 
+### computeLines 算法图解
+
+**算法目标**：把一维的 `textData` 转换成二维的 `lineData`
+
+```
+textData:   ['h','e','l','l','o', '\n', 'w', 'o', 'r', 'l', 'd']
+              ────────────────────────   ─────────────────────────
+              第一行 (自动换行)            第二行 (显式换行符后)
+
+lineData:   [['h','e','l','l','o'], ['w','o','r','l','d']]
+```
+
+假设 Canvas 宽度为 200px，padding=10，所以 `maxWidth = 180px`
+
+#### 示例1：正常输入
+
+```
+输入: textData = ['h','e','l','l','o'] (每个字符 10px 宽)
+
+Step 1: char='h', currentWidth=0
+        currentLine.length > 0? ❌ (空行)
+        charWidth(10) > 180? ❌
+        currentLine.push('h'), currentWidth = 10
+        
+Step 2: char='e', currentWidth=10
+        currentLine.length > 0 && 10 + 10 > 180? ❌
+        charWidth(10) > 180? ❌
+        currentLine.push('e'), currentWidth = 20
+        
+... 以此类推 ...
+
+最终: lineData = [['h','e','l','l','o']]
+```
+
+#### 示例2：自动换行
+
+```
+输入: textData = ['a','b','c',...,'s','t','u'] (每个字符 10px)
+
+Step 1-18: 继续添加字符
+           当 currentWidth=170, currentLine=['a'...'r'] (18个字符)
+           
+Step 19: char='s', currentWidth=170
+         currentLine.length > 0 && 170 + 10 > 180? ❌ (170+10=180, 不大于)
+         charWidth > 180? ❌
+         currentLine.push('s'), currentWidth = 180
+         
+Step 20: char='t', currentWidth=180
+         currentLine.length > 0 && 180 + 10 > 180? ✅
+         → 创建新行！
+         lineData.push(['a'...'s'])
+         currentLine = []
+         currentWidth = 0
+         → charWidth(10) > 180? ❌
+         currentLine.push('t'), currentWidth = 10
+```
+
+#### 示例3：显式换行符
+
+```
+输入: textData = ['a','b','\n','c','d']
+
+Step 1: char='a' → currentLine=['a'], currentWidth=10
+Step 2: char='b' → currentLine=['a','b'], currentWidth=20
+Step 3: char='\n' → 遇到换行符！
+         lineData.push(['a','b'])
+         currentLine = []
+         currentWidth = 0
+Step 4: char='c' → currentLine=['c'], currentWidth=10
+Step 5: char='d' → currentLine=['c','d'], currentWidth=20
+
+最终: lineData = [['a','b'], ['c','d']]
+```
+
+#### 边界情况
+
+**空文档**：如果 `textData = []`，最后会执行 `lineData.push([])`，确保至少有一行（空行）
+
+**末尾换行符**：`['a','b','\n']` → `[['a','b']]`，换行符不产生空行
+
+#### 示例4：单个字符超过最大宽度
+
+```
+输入: textData = ['W'] (字符 'W' 宽度为 20px，maxWidth = 10)
+
+Step 1: char='W', currentWidth=0
+        currentLine.length > 0? ❌ (空行)
+        charWidth(20) > 10? ✅ (字符本身太宽了！)
+        → 直接放入下一行，无法截断
+        currentLine = ['W'], currentWidth = 20
+
+最终: lineData = [['W']]  ← 'W' 会溢出边界，但这是无法避免的
+```
+
+### drawCursor 算法图解
+
+**光标位置计算思路**：
+1. 遍历每一行，统计字符数量
+2. 当 `cursorIndex` 落在当前行的范围内时，找到具体位置
+3. 计算光标的 X 坐标（当前行内偏移）和 Y 坐标（行号 × 行高）
+
+#### 示例：假设 lineData = [['h','e','l'], ['l','o']], cursorIndex = 3
+
+```
+第0行: line=['h','e','l'], charCount=0
+       charCount + 3 = 3 >= 3? ✅ 光标在第0行！
+       colInLine = 3 - 0 = 3
+       textBeforeCursor = "hel"
+       cursorX = padding + width("hel")
+       cursorY = padding + 0 * lineHeightPx
+```
+
+#### 示例：假设 lineData = [['h','e','l'], ['l','o']], cursorIndex = 4
+
+```
+第0行: charCount + 3 = 3 >= 4? ❌ 不满足，继续
+       charCount = 0 + 3 + 1 = 4  (+1 是换行符)
+第1行: charCount + 2 = 6 >= 4? ✅ 光标在第1行！
+       colInLine = 4 - 4 = 0 (行首)
+       textBeforeCursor = "" (空字符串)
+       cursorX = padding
+       cursorY = padding + 1 * lineHeightPx
+```
+
 ### 改进后的 editor.ts
 
 ```typescript
@@ -341,16 +465,15 @@ class MinimalEditor {
   
   // ========== 核心：计算行数据 ==========
   private computeLines() {
-    const { padding, fontSize, lineHeight, width } = this.options
+    const { padding, width } = this.options
     const maxWidth = width - padding * 2
-    const lineHeightPx = fontSize * lineHeight
     
     this.lineData = []
     let currentLine: string[] = []
     let currentWidth = 0
     
     for (const char of this.textData) {
-      // 换行符直接创建新行
+      // 遇到换行符，直接创建新行
       if (char === '\n') {
         this.lineData.push(currentLine)
         currentLine = []
@@ -358,12 +481,18 @@ class MinimalEditor {
         continue
       }
       
-      // 测量字符宽度
       const charWidth = this.ctx.measureText(char).width
       
-      // 如果加上这个字符会超过最大宽度，则换行
-      if (currentWidth + charWidth > maxWidth && currentLine.length > 0) {
+      // 如果当前行已满，需要换行
+      if (currentLine.length > 0 && currentWidth + charWidth > maxWidth) {
         this.lineData.push(currentLine)
+        currentLine = []
+        currentWidth = 0
+      }
+      
+      // 如果这个字符本身就超过最大宽度，直接放入下一行
+      // 否则正常添加
+      if (charWidth > maxWidth) {
         currentLine = [char]
         currentWidth = charWidth
       } else {
@@ -372,7 +501,7 @@ class MinimalEditor {
       }
     }
     
-    // 最后一行
+    // 处理最后一行
     if (currentLine.length > 0) {
       this.lineData.push(currentLine)
     }
@@ -385,7 +514,7 @@ class MinimalEditor {
   
   // ========== 渲染 ==========
   private render() {
-    // 清空
+    // 清空画布（使用背景色填充）
     this.ctx.fillStyle = this.options.backgroundColor
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
     
@@ -409,14 +538,12 @@ class MinimalEditor {
     this.drawCursor()
   }
   
-  // 绘制光标（改进版）
+  // ========== 绘制光标（改进版）==========
   private drawCursor() {
     const { padding, fontSize, lineHeight } = this.options
     const lineHeightPx = fontSize * lineHeight
     
-    // 计算光标在哪一行、哪一列
     let charCount = 0
-    let cursorLineIndex = 0
     let cursorX = padding
     let cursorY = padding
     
@@ -425,8 +552,6 @@ class MinimalEditor {
       const lineCharCount = line.length
       
       if (charCount + lineCharCount >= this.cursorIndex) {
-        // 光标在这一行
-        cursorLineIndex = i
         const colInLine = this.cursorIndex - charCount
         const textBeforeCursor = line.slice(0, colInLine).join('')
         cursorX = padding + this.ctx.measureText(textBeforeCursor).width
@@ -434,10 +559,9 @@ class MinimalEditor {
         break
       }
       
-      charCount += lineCharCount + 1 // +1 是因为换行符
+      charCount += lineCharCount + 1
     }
     
-    // 绘制光标
     this.ctx.fillStyle = '#000'
     this.ctx.fillRect(cursorX, cursorY, 2, fontSize)
   }
