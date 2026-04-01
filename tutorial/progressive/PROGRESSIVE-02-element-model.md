@@ -564,9 +564,9 @@ interface IRow {
 
 ## 下一步
 
-[第3章：排版系统](./PROGRESSIVE-03-typesetting.md)
+在继续之前，你可能需要先阅读 [章节附加：支持中文输入（IME 支持）](./PROGRESSIVE-02-extra-ime-support.md)，了解如何让编辑器支持中文、日文等需要输入法输入的文字。
 
-我们将深入学习排版系统，包括：
+然后继续学习 [第3章：排版系统](./PROGRESSIVE-03-typesetting.md)，我们将深入学习排版系统，包括：
 
 - 英文单词不断词
 - 中英文混排
